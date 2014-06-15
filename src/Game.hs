@@ -31,13 +31,17 @@ slideRow :: Row -> (Row, Int)
 slideRow row = (take gridSize (newRow ++ (repeat Empty)), score)
   where 
     grouped = group $ filter (\t -> t /= Empty) row 
-    newRow = map (\ls -> Tile (sum $ map _value ls) (_tileElement $ head ls)) grouped
+    newRow = map (\ls -> Tile (sum $ map _value ls) Nothing (_tileElement $ head ls)) grouped
     score = sum . (map _value) $ concat $ filter (\ls -> length ls > 1) grouped
 
-
+setPositions :: Grid -> Grid
+setPositions g = map (\(r, y) -> map (\(t, x) -> setPos t (Position x y)) $ zip r [0..]) $ zip g [0..]
+  where
+    setPos (Tile v p e) newPos = Tile v (Just newPos) e
+    setPos Empty newPos = Empty 
 
 slideGrid :: Direction -> Grid ->  (Grid, Int)
-slideGrid dir g = (unrotator newRows, sum scorez)
+slideGrid dir g = (setPositions $ unrotator newRows, sum scorez)
   where 
     (newRows, scorez) = unzip $ map slideRow $ rotator g
     rotator = case dir of

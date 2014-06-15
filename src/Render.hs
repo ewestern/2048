@@ -16,8 +16,8 @@ import qualified Data.Text as T
 renderGame :: Event Direction -> StdGen ->  IO Element
 renderGame evt gen = do
   gridEl <- J.select $ "div"
-  --bhv <- sync $ accum (newGame gen gridEl) (fmap (stepper gen) evt)
-  kill <- sync $ listen evt $ updateGame gridEl
+  bhv <- sync $ accum (newGame gen gridEl) (fmap (stepper gen) evt)
+  kill <- sync $ listen (value bhv) $ (updateGame gridEl)
   return gridEl
 
 --initNewGame :: Element -> StdGen -> GameState -> GameState
@@ -26,63 +26,88 @@ renderGame evt gen = do
 
 -- update the classes of tiles that have elements
 -- give elements (and append) to those that do not
---updateGame :: Element -> GameState -> IO ()
---updateGame el gs = do
---  concat $ gs ^. grid 
+updateGame :: Element -> GameState -> IO ()
+updateGame el gs = do
+  mapM (updateTile el) $ concat $ gs ^. grid 
+  return ()
 
-
-updateTile :: Element -> (Position, Tile) -> IO (Tile)
-updateTile par (p, t) = case t of
-  Empty -> return t
-  Tile v (Just el) -> addCSSClass (p, t)
-  Tile v (Nothing) -> do
+updateTile :: Element -> Tile -> IO ()
+updateTile par t = case t of
+  Empty -> return ()
+  Tile v p (Just el) -> addCSSClass (fromJust p, t)
+  Tile v p (Nothing) -> do
     newEl <- J.select $ "div"
     J.appendJQuery newEl par
-    addCSSClass (p, t)
+    addCSSClass (fromJust p, t)
 
-addCSSClass :: (Position, Tile) -> IO (Tile)
+addCSSClass :: (Position, Tile) -> IO ()
 addCSSClass (pos, tile) = do
   let klasses = ["tile" ++ show (_value tile), "position" ++ positionToString pos]
-  el <- J.addClass (T.pack (intercalate " " klasses)) $ fromJust $ _tileElement tile
-  return $ Tile (_value tile) (Just el)
+  J.addClass (T.pack (intercalate " " klasses)) $ fromJust $ _tileElement tile
+  return $ ()
 
 positionToString :: Position -> String
 positionToString pos = show ((pos ^. y) * gridSize + (pos ^. x))
 
-updateGameState :: Direction -> GameState -> IO GameState
-updateGameState d g = do 
-  upd <- updateGrid (g ^. gridElement) newGrid
-  return $ (set grid upd) . (over score (+sScore)) $ g
+
+
+
+updateGameState :: Direction -> GameState -> GameState
+updateGameState d g = (set grid newGrid) . (over score (+sScore)) $ g
   where
     (newGrid, sScore) = slideGrid d $ g ^. grid 
 
-updateGrid :: Element -> Grid -> IO Grid
-updateGrid par g =  mapM (\(y, r) -> mapM (\(x, t) -> updateTile par (Position x y, t)) $ zip [0..] r) $ zip [0..] g
---updateTile par
+--updateGameState :: Direction -> GameState -> IO GameState
+--updateGameState d g = do 
+--  upd <- updateGrid (g ^. gridElement) newGrid
+--  return $ (set grid upd) . (over score (+sScore)) $ g
+--  where
+--    (newGrid, sScore) = slideGrid d $ g ^. grid 
 
-putRandomTile :: StdGen -> GameState -> IO GameState
+--updateGrid :: Element -> Grid -> IO Grid
+--updateGrid par g =  mapM (\(y, r) -> mapM (\(x, t) -> updateTile par (Position x y, t)) $ zip [0..] r) $ zip [0..] g
+
+putRandomTile :: StdGen -> GameState -> GameState
 putRandomTile gen gs = case mPos of
-  Nothing -> return gs
-  Just pos -> do
-    nt <- updateTile (gs ^. gridElement) (pos, Tile (floor v) Nothing) 
-    return $ over grid (setTile pos $ nt) gs
+  Nothing -> gs
+  Just pos -> over grid (setTile pos $ Tile (floor v) (Just pos) Nothing) gs
   where
     [p, v] = take 2 $ randoms gen
     mPos = newTilePosition p $ gs ^. grid
 
-newGame :: StdGen -> Element -> IO GameState
-newGame gen el =  putRandomTile gen (GameState emptyGrid 0 InProgress el) >>= (putRandomTile gen)
+--putRandomTile :: StdGen -> GameState -> IO GameState
+--putRandomTile gen gs = case mPos of
+--  Nothing -> return gs
+--  Just pos -> do
+--    nt <- updateTile (gs ^. gridElement) (pos, Tile (floor v) Nothing) 
+--    return $ over grid (setTile pos $ nt) gs
+--  where
+--    [p, v] = take 2 $ randoms gen
+--    mPos = newTilePosition p $ gs ^. grid
 
-stepper ::  StdGen -> Direction -> GameState -> IO GameState
+newGame :: StdGen -> Element -> GameState
+newGame gen el =  (putRandomTile gen) . (putRandomTile gen) $ GameState emptyGrid 0 InProgress el
+--newGame :: StdGen -> Element -> IO GameState
+--newGame gen el =  putRandomTile gen (GameState emptyGrid 0 InProgress el) >>= (putRandomTile gen)
+
+
+stepper ::  StdGen -> Direction -> GameState -> GameState
 stepper gen dir gs = if setState ^. progress /= InProgress 
-                      then return gs
-                      else mkStep
+                      then gs
+                      else (putRandomTile gen) (updateGameState dir setState)
   where
-    mkStep = do
-      upd <- updateGameState dir gs
-      tileAdded <- putRandomTile gen upd
-      return tileAdded
     setState = setOutcome gs
+
+--stepper ::  StdGen -> Direction -> GameState -> IO GameState
+--stepper gen dir gs = if setState ^. progress /= InProgress 
+--                      then return gs
+--                      else mkStep
+--  where
+--    mkStep = do
+--      upd <- updateGameState dir gs
+--      tileAdded <- putRandomTile gen upd
+--      return tileAdded
+--    setState = setOutcome gs
 
 
 

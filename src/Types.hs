@@ -29,14 +29,15 @@ instance Eq Position where
 
 makeLenses ''Position
 
-data Tile = Tile {
+data Tile = Tile {  
   _value :: Value,
+  _position :: Maybe Position,
   _tileElement :: Maybe Element
 } | Empty
 
 instance Eq Tile where
   (==) Empty Empty = True
-  (==) (Tile v1 e1) (Tile v2 e2) = v1 == v2
+  (==) (Tile v1 p1 e1) (Tile v2 p2 e2) = v1 == v2 && p1 == p2
   (==) _ _ = False
 
 instance Show Tile where
