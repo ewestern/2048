@@ -31,8 +31,8 @@ slideRow :: Row -> (Row, Int)
 slideRow row = (take gridSize (newRow ++ (repeat Empty)), score)
   where 
     grouped = group $ filter (\t -> t /= Empty) row 
-    newRow = map (\ls -> Tile (sum $ map _value ls) Nothing (_tileElement $ head ls)) grouped
-    score = sum . (map _value) $ concat $ filter (\ls -> length ls > 1) grouped
+    newRow = map (\ls -> Tile (sum $ map tileValue ls) Nothing (_tileElement $ head ls)) grouped
+    score = sum . (map tileValue) $ concat $ filter (\ls -> length ls > 1) grouped
 
 setPositions :: Grid -> Grid
 setPositions g = map (\(r, y) -> map (\(t, x) -> setPos t (Position x y)) $ zip r [0..]) $ zip g [0..]
@@ -55,10 +55,15 @@ slideGrid dir g = (setPositions $ unrotator newRows, sum scorez)
       Down -> rotate . rotate . rotate
       _ -> id
 
+tileValue :: Tile -> Value
+tileValue t = case t of 
+  Empty -> 0
+  Tile v p e -> v
+
 
 --game is won if there is a tile with value of winningVal
 hasWon :: Grid -> Bool
-hasWon = not . isNothing . find ((== winningVal) . _value) . concat
+hasWon = not . isNothing . find ((== winningVal) . tileValue) . concat
 
 --game is lost if sliding in all directions results in the same grid
 hasLost :: Grid -> Bool
