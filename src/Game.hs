@@ -1,4 +1,4 @@
-module Game where
+  module Game where
 
 import Types
 import Prelude hiding (Empty, Right, Left)
@@ -72,8 +72,6 @@ hasLost g = and $ map (\d -> g == (fst $ slideGrid d g)) [Down, Right, Up, Left]
 emptyPositions :: Grid -> [Position]
 emptyPositions = map fst . filter ((== Empty) . snd) . tilePositions
 
---remakeGrid :: [(Position, Tile)] -> Grid
---remakeGrid ps = 
 
 tilePositions :: Grid -> [(Position, Tile)]
 tilePositions = concat . zipWith dZip [0..]
@@ -93,8 +91,6 @@ setOutcome gs
   | hasWon $ gs ^. grid = set progress Win gs
   | hasLost $ gs ^. grid = set progress Lose gs
   | otherwise = gs
-
---let (x1:y1:x2:y2:ys) = randoms gen in (putRandomTile x1 y1) . (putRandomTile x2 y2)
 
 
 

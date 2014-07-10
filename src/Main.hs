@@ -7,36 +7,30 @@ import Render (renderGame)
 import Prelude hiding (Left, Right)
 import System.Random
 import FRP.Sodium
-import qualified JavaScript.JQuery as J
+import qualified JavaScript as J
 import Control.Lens
 import GHCJS.Types
 import GHCJS.Foreign
+import Data.Default
 
-foreign import javascript unsafe 
-  "$1.keyCode"
-  getKey :: J.Event -> IO Int
-
-handlerSettings = J.HandlerSettings False False False Nothing Nothing
-
-handleKeydown :: J.Event -> IO (Direction)
+handleKeydown :: J.Event -> IO Direction
 handleKeydown ev = do
-  print "event"
-  n <- getKey ev
+  n <- J.getKey ev
   print n
   case n of
     38 -> return Up
     40 -> return Down
     37 -> return Left
     39 -> return Right
+    _ -> return Nope
 
 main = do
-  body <- J.select "body"
   (evt, pushEvent) <- sync newEvent
-  gen <- getStdGen
-  gameEl <- renderGame evt gen
-  J.appendJQuery gameEl body
   let handler e = sync . pushEvent =<< handleKeydown e
-  J.on handler "keydown" handlerSettings body
+  J.addWindowListener "keydown" handler
+  gen <- getStdGen
+  cont <- J.getElementById "game-container"
+  gameEl <- renderGame evt gen cont
   return ()
 
   

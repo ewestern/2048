@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, TemplateHaskell, Rank2Types #-}
+{-# LANGUAGE OverloadedStrings, TemplateHaskell, Rank2Types, FlexibleInstances #-}
 module Types where
 
 
@@ -6,10 +6,10 @@ import Control.Lens hiding (element)
 import FRP.Sodium
 import qualified Data.Set as S
 import qualified Data.Map as M
+import GHCJS.Types
 
-
-import qualified JavaScript.JQuery as J
-type Element = J.JQuery
+import qualified JavaScript as J
+type Element = J.DomElement
 
 --type Element = String
 
@@ -26,6 +26,9 @@ instance Ord Position where
 
 instance Eq Position where
   (==) (Position x1 y1) (Position x2 y2) = x1 == x2 && y1 == y2
+
+instance Show (JSRef J.DomElement_) where
+  show el = "Element"
 
 makeLenses ''Position
 
@@ -48,14 +51,14 @@ type Row = [Tile]
 type Grid = [Row]
 
 
-data Progress = InProgress | Lose | Win deriving (Eq)
+data Progress = InProgress | Lose | Win deriving (Eq, Show)
 
 data GameState = GameState {
   _grid :: Grid,
   _score :: Int,
   _progress :: Progress,
   _gridElement :: Element
-}
+} deriving (Show)
 
 instance Eq GameState where
   (==) (GameState g1 s1 p1 el1) (GameState g2 s2 p2 el2) = p1 == p2 && s1 == s2 && compare g1 g2
