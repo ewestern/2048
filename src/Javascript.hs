@@ -84,3 +84,9 @@ addWindowListener s cb = makeCallback cb >>= js_addWindowListener (toJSString s)
 
 createElementWithClass :: T.Text -> T.Text -> IO (DomElement)
 createElementWithClass tag klass = createElement tag >>= (\e -> addClass e klass)
+
+createElementWithClassAndId :: T.Text -> T.Text -> T.Text -> IO (DomElement)
+createElementWithClassAndId tag klass iD =  do
+  de <- createElementWithClass tag klass
+  setAttribute de "id" iD
+  return de
