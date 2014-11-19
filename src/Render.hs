@@ -13,6 +13,67 @@ import Data.List
 import Data.Maybe
 import qualified Data.Text as T
 
+-- dependicies
+-- Behavior Grid -> Behavior Tile -> Behavior Tiles 
+
+makeGrid par = do
+  gridEl <- J.createElementWithClass "div" "tile-container" >>= J.appendChild par
+
+data TileVal = {
+  tid :: Int, 
+  position :: Position,
+  value :: Value,
+  active:: Bool
+}
+
+
+collect :: (a -> s -> (b,s))-> s -> Behavior a -> Reactive (Behavior b)
+collectE :: (a -> s -> (b,s))-> s -> Event a -> Reactive (Event b)
+
+collectE :: (Dir -> Grid -> (Grid , Grid))-> Grid -> Event Dir -> Reactive (Event Grid) 
+
+
+startGame evt = do
+  let update' d = (\v -> (v, v)) . (updateGameState d)
+  initialGrid <- makeInitialGrid
+  eg <- sync $ collectE update' initialGrid evt
+  listen eg updateGame
+
+
+updateGameState :: Direction -> GameState -> GameState
+updateGameState d = (set grid newGrid) . (over score (+sScore)) 
+  where
+    (newGrid, sScore) = slideGrid d $ g ^. grid 
+
+
+updateGame :: GameState -> IO ()
+updateGame gs = do
+  print $ gs
+  mapM_ updateTile $ concat $ _grid gs  
+  return ()
+
+
+
+ -- animation requires
+makeTile :: Element -> Behavior (Maybe TileVal) -> IO (Behavior Tile)
+makeTile p v parent = do
+  newEl <- J.createElementWithClass "div" "tile"
+  inner <- J.createElementWithClass "div" "tile-inner"
+  J.appendChild newEl inner
+  J.appendChild par newEl
+  tile <- sync (hold 
+  {-let updateCss pos val = -}
+
+
+-- removes all previous classes
+setCSSClass :: (Position, Tile) -> IO ()
+setCSSClass (pos, tile) = 
+    let klasses = ["tile", "tile-" ++ show (tileValue tile), "tile-position-" ++ positionToString pos] 
+    in J.setAttribute (fromJust $ _tileElement tile) "class" (T.pack (intercalate " " klasses))  
+
+positionToString :: Position -> String
+positionToString pos = (show $ _y pos + 1) ++ "-" ++ (show $ _x pos + 1)
+
 
 --hold :: a -> Event a -> Reactive (Behavior a)
 renderGame :: Event Direction -> StdGen ->  Element -> IO Element
@@ -40,27 +101,11 @@ setTileElement el t = case t of
 
 -- update the classes of tiles that have elements
 -- give elements (and append) to those that do not
-updateGame :: GameState -> IO ()
-updateGame gs = do
-  print $ gs
-  mapM_ updateTile $ concat $ _grid gs  
-  return ()
 
 updateTile :: Tile -> IO ()
 updateTile t = case t of
   Empty -> return ()
   Tile v p (Just el) -> addCSSClass (fromJust p, t)
-
-addCSSClass :: (Position, Tile) -> IO ()
-addCSSClass (pos, tile) = let klasses = ["tile", "tile-" ++ show (tileValue tile), "tile-position-" ++ positionToString pos] in J.setAttribute (fromJust $ _tileElement tile) "class" (T.pack (intercalate " " klasses))  
-
-positionToString :: Position -> String
-positionToString pos = (show $ _y pos + 1) ++ "-" ++ (show $ _x pos + 1)
-
-updateGameState :: Direction -> GameState -> GameState
-updateGameState d g = (set grid newGrid) . (over score (+sScore)) $ g
-  where
-    (newGrid, sScore) = slideGrid d $ g ^. grid 
 
 putRandomTile :: StdGen -> (Tile -> Tile) -> GameState -> GameState
 putRandomTile gen nd gs = case mPos of

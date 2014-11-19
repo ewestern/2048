@@ -47,8 +47,8 @@ instance Show Tile where
   show (Tile v p t) = "Tile (" ++ show v ++ ", " ++ show p ++ ")"
   show Empty = "Empty"
 
-type Row = [Tile]
-type Grid = [Row]
+{-type Row = [Tile]-}
+{-type Grid = [Row]-}
 
 
 data Progress = InProgress | Lose | Win deriving (Eq, Show)

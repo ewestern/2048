@@ -55,6 +55,14 @@ foreign import javascript unsafe
   "document.getElementById($1)"
   js_getElementById :: JSString -> IO DomElement
 
+foreign import javascript unsafe
+  "$1.removeChild($2)"
+  js_removeChild :: DomElement -> DomELement -> IO ()
+
+
+removeChild :: DomElement -> DomElement -> IO ()
+removeChild = js_removeChild
+
 getElementById :: T.Text -> IO DomElement
 getElementById = js_getElementById . toJSString 
 
