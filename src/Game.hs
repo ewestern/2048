@@ -13,6 +13,12 @@ winningVal = 2048
 tileProbability = 0.9
 initialTiles = 2
 
+gridToTransform :: Grid -> M.Map Int (Position, Value) 
+gridToTransform  = M.foldlWithKey insert' M.empty 
+	where
+		insert' p (Just (Tile tid v)) acc = M.insert tid (p, v) acc
+		insert' p Nothing acc = acc
+
 
 gridToTileList :: Grid -> TileList
 gridToTileList g = [[fromJust $ M.lookup (Position x y) g | y <- [1..gridSize]] | x <- [1..gridSize]]

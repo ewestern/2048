@@ -24,6 +24,22 @@ handleKeydown ev = do
     39 -> return Right
     _ -> return Nope
 
+
+makeGrid :: Element -> Event Direction -> IO (Behavior Grid )
+makeGrid par ed = do
+-- create 16 dom elements that are removed and added as needed. 
+-- However, adding it back is still an IO action, and we're back where we started
+  gridEl <- J.createElementWithClass "div" "tile-container" >>= J.appendChild par
+  {-(e1:e2:es) <- replicateM (gridSize ^ 2)  createTileEl-}
+  gen <- getStdGen
+  initialGrid <- (addNewTile gen) . (addNewTile gen) $ emptyGrid 
+  -- best way, grid remains source of truth, search for tid on dom
+  -- on list
+  bg <- sync $ collect updateGrid =<< hold initialGrid evt
+  un <- sync $ listen renderGrid $ values bg
+
+
+
 main = do
   (evt, pushEvent) <- sync newEvent
   let handler e = sync . pushEvent =<< handleKeydown e

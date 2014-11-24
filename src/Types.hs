@@ -36,6 +36,7 @@ instance Eq Tile where
 type Grid = M.Map Position (Maybe Tile)
 
 type GridBehavior (Grid, M.Map Int (Behavior Tile))
+
 type TileList = [[Maybe Tile]]
 
 data Progress = InProgress | Lose | Win deriving (Eq, Show)

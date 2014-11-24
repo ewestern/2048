@@ -12,11 +12,45 @@ import Control.Lens
 import Data.List
 import Data.Maybe
 import qualified Data.Text as T
-import Data.Dequeue
+import Data.List ((\\))
 
 
 
-uupdateGameState :: Direction -> GameState -> GameState
+
+
+renderGrid :: Element -> Grid -> IO ()
+renderGrid par g = do
+  es <- getElementsByClassName  "tile"   
+  let trans = gridToTransform g 
+  mapM_ updateEl es
+  mapM_ createEL $ (M.getKeys trans) \\ map read es
+  where
+    updateEl el = do
+      t <- getId el
+      case M.lookup (read t) $ gridToTransform g of
+        Nothing -> removeChild par el
+        Just (p, v) -> setCSSClass el (p, v) $ read t 
+    createEl i = do
+      el <- createTileEl
+      setCSSClass el (fromJust $ M.lookup i trans) $ read i
+
+
+createTileEl :: IO Element 
+createTileEl = do
+  newEl <- J.createElementWithClass "div" "tile"
+  inner <- J.createElementWithClass "div" "tile-inner"
+  J.appendChild newEl inner
+  return newEl
+
+addNewTile :: StdGen -> Grid -> Grid
+addNewTile s g = let t = Tile  
+  where
+		empties = keys $ filter ((==) Nothing) g
+
+
+ ---
+ --
+updateGameState :: Direction -> GameState -> GameState
 updateGameState d = (set grid newGrid) . (over score (+sScore)) 
   where
     (newGrid, sScore) = slideGrid d $ g ^. grid 
@@ -25,32 +59,16 @@ updateGameState d = (set grid newGrid) . (over score (+sScore))
 makeGrid :: Element -> StdGen -> Event Direction -> IO (Behavior Grid)
 makeGrid par gen ed = do
   initialGrid <- (addNewTile gen) . (addNewTile gen) $ emptyGrid 
--- need way to perform arbitrary number of IO actions here
   bg <- sync $ collect updateGrid =<< hold initialGrid evt
   return bg
 -- makeTile should produce a simple behavior that changes the css (And possibly removes the element from the dom) when the behavior changes.
 
-gridToTransform :: Grid -> M.Map Int (Position, Value) 
-gridToTransform  = M.foldlWithKey insert' M.empty 
-	where
-		insert' p (Just (Tile tid v)) acc = M.insert tid (p, v) acc
-		insert' p Nothing acc = acc
 
 updateGrid :: StdGen -> Direction -> Grid -> (Grid, Grid)
 updateGrid gen d g = duplicate .  
 	where
 		duplicate v = (v, v)
 
-renderGrid :: Grid -> IO ()
-rederGrid g = do
--- create 16 dom elements that are removed and added as needed. 
-	
-  
-
-addNewTile :: Grid -> StdGen -> Grid
-addNewTile g s = let t = Tile  
-  where
-		empties = keys $ filter ((==) Nothing) g
 
 updateGame :: GameState -> IO ()
 updateGame gs = do
@@ -59,26 +77,15 @@ updateGame gs = do
   return ()
 
 
-
- -- animation requires
-makeTile :: Element -> Behavior (Maybe TileVal) -> IO (Behavior Tile)
-makeTile p v parent = do
-  newEl <- J.createElementWithClass "div" "tile"
-  inner <- J.createElementWithClass "div" "tile-inner"
-  J.appendChild newEl inner
-  J.appendChild par newEl
-  tile <- sync (hold 
-  {-let updateCss pos val = -}
-
-
 -- removes all previous classes
-setCSSClass :: (Position, Tile) -> IO ()
-setCSSClass (pos, tile) = 
-    let klasses = ["tile", "tile-" ++ show (tileValue tile), "tile-position-" ++ positionToString pos] 
-    in J.setAttribute (fromJust $ _tileElement tile) "class" (T.pack (intercalate " " klasses))  
+setCSSClass :: Element -> (Position, Value)-> ID -> IO ()
+setCSSClass el (pos, v) i = do  
+    let klasses = ["tile", "tile-" ++ show , "tile-position-" ++ positionToString pos] 
+    J.setAttribute el "class" (T.pack (intercalate " " klasses))  
+    J.setAttribute e  "id"  (show i)
 
 positionToString :: Position -> String
-positionToString pos = (show $ _y pos + 1) ++ "-" ++ (show $ _x pos + 1)
+positionToString pos = (show $ _y pos)  ++ "-" ++ (show $ _x pos)
 
 
 --hold :: a -> Event a -> Reactive (Behavior a)
@@ -91,27 +98,6 @@ renderGame evt gen par = do
   kill <- sync $ listen (value bhv) updateGame
   return gridEl
 
-
-addNewTile :: Element -> IO (Tile -> Tile)
-addNewTile par = do
-  newEl <- J.createElementWithClass "div" "tile"
-  inner <- J.createElementWithClass "div" "tile-inner"
-  J.appendChild newEl inner
-  J.appendChild par newEl
-  return $ setTileElement newEl
-
-setTileElement :: Element -> Tile -> Tile
-setTileElement el t = case t of
-  Tile v p e -> Tile v p (Just el)
-  Empty -> Empty
-
--- update the classes of tiles that have elements
--- give elements (and append) to those that do not
-
-updateTile :: Tile -> IO ()
-updateTile t = case t of
-  Empty -> return ()
-  Tile v p (Just el) -> addCSSClass (fromJust p, t)
 
 putRandomTile :: StdGen -> (Tile -> Tile) -> GameState -> GameState
 putRandomTile gen nd gs = case mPos of

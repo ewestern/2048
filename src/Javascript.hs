@@ -16,6 +16,10 @@ foreign import javascript unsafe
   "$1.keyCode"
   getKey :: Event -> IO Int
 
+foreign import javascript unsafe
+  "$1.id;"
+  js_getId :: Element -> IO JSString
+
 --foreign import javascript unsafe
 --  "$1.toString();"
 --  js_toString :: DomElement -> JSString
@@ -63,11 +67,18 @@ foreign import javascript unsafe
 	"document.getElementsByClassName($1)"
   js_getElementsByClassName :: JSString -> IO [DomElements]
 
+
+getId :: DomElement -> T.Text
+getId el = toJSString . js_getId
+
 removeChild :: DomElement -> DomElement -> IO ()
 removeChild = js_removeChild
 
 getElementById :: T.Text -> IO DomElement
 getElementById = js_getElementById . toJSString 
+
+getElementsByClassName :: T.Text -> IO [DomElement]
+getElementsByClassName = js_getElementsByClassName . toJSString
 
 setAttribute :: DomElement -> T.Text -> T.Text -> IO ()
 setAttribute el att val = js_setAttribute el (toJSString att) (toJSString val)
