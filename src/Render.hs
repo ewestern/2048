@@ -12,39 +12,45 @@ import Control.Lens
 import Data.List
 import Data.Maybe
 import qualified Data.Text as T
-
--- dependicies
--- Behavior Grid -> Behavior Tile -> Behavior Tiles 
-
-makeGrid par = do
-  gridEl <- J.createElementWithClass "div" "tile-container" >>= J.appendChild par
-
-data TileVal = {
-  tid :: Int, 
-  position :: Position,
-  value :: Value,
-  active:: Bool
-}
+import Data.Dequeue
 
 
-collect :: (a -> s -> (b,s))-> s -> Behavior a -> Reactive (Behavior b)
-collectE :: (a -> s -> (b,s))-> s -> Event a -> Reactive (Event b)
 
-collectE :: (Dir -> Grid -> (Grid , Grid))-> Grid -> Event Dir -> Reactive (Event Grid) 
-
-
-startGame evt = do
-  let update' d = (\v -> (v, v)) . (updateGameState d)
-  initialGrid <- makeInitialGrid
-  eg <- sync $ collectE update' initialGrid evt
-  listen eg updateGame
-
-
-updateGameState :: Direction -> GameState -> GameState
+uupdateGameState :: Direction -> GameState -> GameState
 updateGameState d = (set grid newGrid) . (over score (+sScore)) 
   where
     (newGrid, sScore) = slideGrid d $ g ^. grid 
 
+
+makeGrid :: Element -> StdGen -> Event Direction -> IO (Behavior Grid)
+makeGrid par gen ed = do
+  initialGrid <- (addNewTile gen) . (addNewTile gen) $ emptyGrid 
+-- need way to perform arbitrary number of IO actions here
+  bg <- sync $ collect updateGrid =<< hold initialGrid evt
+  return bg
+-- makeTile should produce a simple behavior that changes the css (And possibly removes the element from the dom) when the behavior changes.
+
+gridToTransform :: Grid -> M.Map Int (Position, Value) 
+gridToTransform  = M.foldlWithKey insert' M.empty 
+	where
+		insert' p (Just (Tile tid v)) acc = M.insert tid (p, v) acc
+		insert' p Nothing acc = acc
+
+updateGrid :: StdGen -> Direction -> Grid -> (Grid, Grid)
+updateGrid gen d g = duplicate .  
+	where
+		duplicate v = (v, v)
+
+renderGrid :: Grid -> IO ()
+rederGrid g = do
+-- create 16 dom elements that are removed and added as needed. 
+	
+  
+
+addNewTile :: Grid -> StdGen -> Grid
+addNewTile g s = let t = Tile  
+  where
+		empties = keys $ filter ((==) Nothing) g
 
 updateGame :: GameState -> IO ()
 updateGame gs = do

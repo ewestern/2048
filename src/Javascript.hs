@@ -2,7 +2,7 @@
 module JavaScript where
 
 import GHCJS.Types
-import GHCJS.DOM.Types (Element(..))
+
 import GHCJS.Foreign
 import qualified Data.Text as T
 
@@ -57,8 +57,11 @@ foreign import javascript unsafe
 
 foreign import javascript unsafe
   "$1.removeChild($2)"
-  js_removeChild :: DomElement -> DomELement -> IO ()
+  js_removeChild :: DomElement -> DomElement -> IO ()
 
+foreign import javascript unsafe
+	"document.getElementsByClassName($1)"
+  js_getElementsByClassName :: JSString -> IO [DomElements]
 
 removeChild :: DomElement -> DomElement -> IO ()
 removeChild = js_removeChild

@@ -6,42 +6,34 @@ import Control.Lens
 import Data.List
 import Data.Maybe
 import System.Random
+import qualified Data.Map as M
 
 gridSize = 4
 winningVal = 2048
 tileProbability = 0.9
 initialTiles = 2
 
-rotate :: Grid -> Grid
+
+gridToTileList :: Grid -> TileList
+gridToTileList g = [[fromJust $ M.lookup (Position x y) g | y <- [1..gridSize]] | x <- [1..gridSize]]
+
+rotate :: TileList -> TileList 
 rotate = map reverse . transpose
 
 emptyGrid :: Grid
-emptyGrid = replicate gridSize $ replicate gridSize Empty
-
-readTile :: Position -> Grid -> Tile
-readTile (Position x y) g = (g !! y) !! x 
-
-setTile :: Position -> Tile -> Grid -> Grid
-setTile (Position x y) t g = let r = take x row ++ [t] ++ drop (x + 1) row in take y g ++ [r] ++ drop (y + 1) g
-  where row = g !! y
+emptyGrid = M.fromList [(Position x y, Nothing) | x <- [1..gridSize], y <- [1..gridSize]]
 
 -- creates a new row, slid to the left, with appropriate values merged if necessary
 --HERE
-slideRow :: Row -> (Row, Int)
-slideRow row = (take gridSize (newRow ++ (repeat Empty)), score)
+slideRow :: [Maybe Tile] -> ([Maybe Tile], Int)
+slideRow row = (take gridSize (newRow ++ (repeat Nothing)), score)
   where 
-    grouped = group $ filter (\t -> t /= Empty) row 
-    newRow = map (\ls -> Tile (sum $ map tileValue ls) Nothing (_tileElement $ head ls)) grouped
+    grouped = group $ filter (\t -> t /= Nothing) row 
+    newRow = map (\ls -> Tile (_tid . head $ ls) (sum $ map tileValue ls)) grouped
     score = sum . (map tileValue) $ concat $ filter (\ls -> length ls > 1) grouped
 
-setPositions :: Grid -> Grid
-setPositions g = map (\(r, y) -> map (\(t, x) -> setPos t (Position x y)) $ zip r [0..]) $ zip g [0..]
-  where
-    setPos (Tile v p e) newPos = Tile v (Just newPos) e
-    setPos Empty newPos = Empty 
-
-slideGrid :: Direction -> Grid ->  (Grid, Int)
-slideGrid dir g = (setPositions $ unrotator newRows, sum scorez)
+slideGrid :: Direction -> TileList ->  (TileList, Int)
+slideGrid dir g = (unrotator newRows, sum scorez)
   where 
     (newRows, scorez) = unzip $ map slideRow $ rotator g
     rotator = case dir of
@@ -55,11 +47,9 @@ slideGrid dir g = (setPositions $ unrotator newRows, sum scorez)
       Down -> rotate . rotate . rotate
       _ -> id
 
-tileValue :: Tile -> Value
-tileValue t = case t of 
-  Empty -> 0
-  Tile v p e -> v
-
+tileValue :: Maybe Tile -> Value
+tileValue (Just t) = _value t
+tileValue Nothing = 0
 
 --game is won if there is a tile with value of winningVal
 hasWon :: Grid -> Bool
