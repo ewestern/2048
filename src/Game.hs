@@ -13,18 +13,59 @@ winningVal = 2048
 tileProbability = 0.9
 initialTiles = 2
 
+putRandomTile :: Float -> Float -> Int ->  Grid -> Grid
+putRandomTile p v i g = 
+  let newPos = newTilePosition p g
+      newVal = if v < 0.9 then 2 else 4
+  in case newPos of
+    Nothing -> g
+    Just pos -> M.insert pos (Just $ Tile i newVal) g
+
+newTilePosition :: Float -> Grid -> Maybe Position
+newTilePosition x g = case emptyPositions g of
+  [] -> Nothing
+  es -> randomChoice x es 
+
+
+randomChoice :: Float -> [b] -> Maybe b
+randomChoice f l = 
+  let idx = floor $ f * fromIntegral (length l)
+  in if length l == 0 then Nothing else Just $ l !! (floor  f * length l)
+
+
 gridToTransform :: Grid -> M.Map Int (Position, Value) 
 gridToTransform  = M.foldlWithKey insert' M.empty 
 	where
-		insert' p (Just (Tile tid v)) acc = M.insert tid (p, v) acc
-		insert' p Nothing acc = acc
+		insert' acc p (Just (Tile tid v)) = M.insert tid (p, v) acc
+		insert' acc p Nothing = acc
 
+
+{-updateGameState :: Direction -> GameState -> GameState-}
+{-updateGameState d = (set grid newGrid) . (over score (+sScore)) -}
+  {-where-}
+    {-(newGrid, sScore) = slideGrid d $ g ^. grid -}
+
+updateGrid :: StdGen -> Direction -> Grid -> ((Int, Grid), Grid)
+updateGrid gen d g = 
+  let (tl, i) =  slideGrid d $ gridToTileList g 
+      newGrid = putRandomTile p v newId $ tileListToGrid tl
+  in ((i, newGrid), newGrid) 
+  where
+    count' a Nothing = a
+    count' a (Just (Tile i v)) = if i > a then i else a 
+    newId = (+1) $ M.foldl count' 1 g
+    (p:v:_) = take 2 $ randoms gen
+    duplicate v = (v, v)
 
 gridToTileList :: Grid -> TileList
 gridToTileList g = [[fromJust $ M.lookup (Position x y) g | y <- [1..gridSize]] | x <- [1..gridSize]]
 
+tileListToGrid :: TileList -> Grid
+tileListToGrid tl = M.fromList . concat $ map (\(r, y) -> map (\(mt, x) -> (Position x y, mt)) (zip r [1..])) (zip tl [1..])
+
 rotate :: TileList -> TileList 
 rotate = map reverse . transpose
+
 
 emptyGrid :: Grid
 emptyGrid = M.fromList [(Position x y, Nothing) | x <- [1..gridSize], y <- [1..gridSize]]
@@ -35,8 +76,9 @@ slideRow :: [Maybe Tile] -> ([Maybe Tile], Int)
 slideRow row = (take gridSize (newRow ++ (repeat Nothing)), score)
   where 
     grouped = group $ filter (\t -> t /= Nothing) row 
-    newRow = map (\ls -> Tile (_tid . head $ ls) (sum $ map tileValue ls)) grouped
+    newRow = map mergeTiles grouped
     score = sum . (map tileValue) $ concat $ filter (\ls -> length ls > 1) grouped
+    mergeTiles ls@(Just (Tile i v):ts) = Just $ Tile i (sum $ map tileValue ls)
 
 slideGrid :: Direction -> TileList ->  (TileList, Int)
 slideGrid dir g = (unrotator newRows, sum scorez)
@@ -58,34 +100,22 @@ tileValue (Just t) = _value t
 tileValue Nothing = 0
 
 --game is won if there is a tile with value of winningVal
-hasWon :: Grid -> Bool
+hasWon :: TileList -> Bool
 hasWon = not . isNothing . find ((== winningVal) . tileValue) . concat
 
 --game is lost if sliding in all directions results in the same grid
-hasLost :: Grid -> Bool
+hasLost :: TileList -> Bool
 hasLost g = and $ map (\d -> g == (fst $ slideGrid d g)) [Down, Right, Up, Left]
 
 emptyPositions :: Grid -> [Position]
-emptyPositions = map fst . filter ((== Empty) . snd) . tilePositions
-
-
-tilePositions :: Grid -> [(Position, Tile)]
-tilePositions = concat . zipWith dZip [0..]
-  where 
-    dZip y ls = map (\(x, t) ->  (Position x y, t)) $ zip [0..] ls
-
-newTilePosition :: Float -> Grid -> Maybe Position
-newTilePosition x g = case empties of
-  [] -> Nothing
-  otherwise -> Just $ empties !! (floor $ x * (fromIntegral $ length empties))
-  where
-    empties = emptyPositions g  
+emptyPositions = M.keys .  M.filter  (\m -> m == Nothing) 
+{-map fst . filter ((== Empty) . snd) . tilePositions-}
 
 
 setOutcome :: GameState -> GameState
 setOutcome gs
-  | hasWon $ gs ^. grid = set progress Win gs
-  | hasLost $ gs ^. grid = set progress Lose gs
+  | hasWon . gridToTileList . _grid $ gs = set progress Win gs
+  | hasLost . gridToTileList . _grid $ gs = set progress Lose gs
   | otherwise = gs
 
 

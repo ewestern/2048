@@ -42,74 +42,29 @@ createTileEl = do
   J.appendChild newEl inner
   return newEl
 
-addNewTile :: StdGen -> Grid -> Grid
-addNewTile s g = let t = Tile  
-  where
-		empties = keys $ filter ((==) Nothing) g
-
 
  ---
  --
-updateGameState :: Direction -> GameState -> GameState
-updateGameState d = (set grid newGrid) . (over score (+sScore)) 
-  where
-    (newGrid, sScore) = slideGrid d $ g ^. grid 
 
-
-makeGrid :: Element -> StdGen -> Event Direction -> IO (Behavior Grid)
-makeGrid par gen ed = do
+makeGrid :: Element -> Event Direction -> IO (Behavior Grid)
+makeGrid par ed = do
   initialGrid <- (addNewTile gen) . (addNewTile gen) $ emptyGrid 
   bg <- sync $ collect updateGrid =<< hold initialGrid evt
   return bg
 -- makeTile should produce a simple behavior that changes the css (And possibly removes the element from the dom) when the behavior changes.
 
 
-updateGrid :: StdGen -> Direction -> Grid -> (Grid, Grid)
-updateGrid gen d g = duplicate .  
-	where
-		duplicate v = (v, v)
-
-
-updateGame :: GameState -> IO ()
-updateGame gs = do
-  print $ gs
-  mapM_ updateTile $ concat $ _grid gs  
-  return ()
-
-
--- removes all previous classes
 setCSSClass :: Element -> (Position, Value)-> ID -> IO ()
-setCSSClass el (pos, v) i = do  
-    let klasses = ["tile", "tile-" ++ show , "tile-position-" ++ positionToString pos] 
-    J.setAttribute el "class" (T.pack (intercalate " " klasses))  
-    J.setAttribute e  "id"  (show i)
+setCSSClass el (pos, v) i =   
+    let klasses = ["tile", "tile-" ++ show , "tile-position-" ++ positionToString pos]
+        set' = J.setAttribute el 
+    in set' "class" (T.pack (intercalate " " klasses)) >>  set'  "id"  (show i)
 
 positionToString :: Position -> String
 positionToString pos = (show $ _y pos)  ++ "-" ++ (show $ _x pos)
 
 
---hold :: a -> Event a -> Reactive (Behavior a)
-renderGame :: Event Direction -> StdGen ->  Element -> IO Element
-renderGame evt gen par = do
-  gridEl <- J.createElementWithClass "div" "tile-container" >>= J.appendChild par
-  addTile <- addNewTile gridEl
-  let initGame = newGame gen addTile gridEl
-  bhv <- sync $ hold initGame $ fmap (stepper gen addTile initGame) evt
-  kill <- sync $ listen (value bhv) updateGame
-  return gridEl
 
-
-putRandomTile :: StdGen -> (Tile -> Tile) -> GameState -> GameState
-putRandomTile gen nd gs = case mPos of
-  Nothing -> gs
-  Just pos -> over grid (setTile pos $ nd $ Tile val (Just pos) Nothing) gs
-  where
-    [p, v] = take 2 $ randoms gen
-    val =  if v < 0.9 then 2 else 4
-    mPos = newTilePosition p $ gs ^. grid
-
-newGame :: StdGen -> (Tile -> Tile) -> Element -> GameState
-newGame gen nd el =  (putRandomTile gen nd) . (putRandomTile gen nd) $ GameState emptyGrid 0 InProgress el
 
 
 stepper ::  StdGen -> (Tile -> Tile) -> GameState -> Direction -> GameState
