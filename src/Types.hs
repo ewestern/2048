@@ -17,7 +17,7 @@ data Position = Position {
   _y :: Int
 } deriving (Show, Eq, Ord)
 
-makeLenses ''Position
+--makeLenses ''Position
 
 data Tile = Tile {  
   _tid :: Int,
@@ -40,8 +40,7 @@ data Progress = InProgress | Lose | Win deriving (Eq, Show)
 data GameState = GameState {
   _grid :: Grid,
   _score :: Int,
-  _progress :: Progress,
-  _currentId :: Int
+  _progress :: Progress
 } deriving (Show, Eq)
 
 

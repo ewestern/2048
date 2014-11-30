@@ -13,29 +13,32 @@ import Data.List
 import Data.Maybe
 import qualified Data.Text as T
 import Data.List ((\\))
+import qualified Data.Map as M
+import Control.Applicative
 
 
+readText :: T.Text -> Int
+readText = read . T.unpack
 
-
-
-renderGrid :: Element -> Grid -> IO ()
+renderGrid :: J.Element -> Grid -> IO ()
 renderGrid par g = do
-  es <- getElementsByClassName  "tile"   
-  let trans = gridToTransform g 
+  es <- J.getElementsByClassName  "tile"   
+  ids <- map readText <$> mapM J.getId es
   mapM_ updateEl es
-  mapM_ createEL $ (M.getKeys trans) \\ map read es
-  where
+  mapM_ createEl $ (M.keys trans) \\ ids  
+	where
+    trans = gridToTransform g
     updateEl el = do
-      t <- getId el
-      case M.lookup (read t) $ gridToTransform g of
-        Nothing -> removeChild par el
-        Just (p, v) -> setCSSClass el (p, v) $ read t 
+      t <- J.getId el
+      case M.lookup (readText t) $ gridToTransform g of
+        Nothing -> J.removeChild par el
+        Just (p, v) -> setCSSClass el (p, v) $ readText t 
     createEl i = do
       el <- createTileEl
-      setCSSClass el (fromJust $ M.lookup i trans) $ read i
+      setCSSClass el (fromJust $ M.lookup i trans)  i
 
 
-createTileEl :: IO Element 
+createTileEl :: IO J.Element 
 createTileEl = do
   newEl <- J.createElementWithClass "div" "tile"
   inner <- J.createElementWithClass "div" "tile-inner"
@@ -43,22 +46,11 @@ createTileEl = do
   return newEl
 
 
- ---
- --
-
-makeGrid :: Element -> Event Direction -> IO (Behavior Grid)
-makeGrid par ed = do
-  initialGrid <- (addNewTile gen) . (addNewTile gen) $ emptyGrid 
-  bg <- sync $ collect updateGrid =<< hold initialGrid evt
-  return bg
--- makeTile should produce a simple behavior that changes the css (And possibly removes the element from the dom) when the behavior changes.
-
-
-setCSSClass :: Element -> (Position, Value)-> ID -> IO ()
+setCSSClass :: J.Element -> (Position, Value)-> Int -> IO ()
 setCSSClass el (pos, v) i =   
-    let klasses = ["tile", "tile-" ++ show , "tile-position-" ++ positionToString pos]
+    let klasses = ["tile", "tile-" ++ show v, "tile-position-" ++ positionToString pos]
         set' = J.setAttribute el 
-    in set' "class" (T.pack (intercalate " " klasses)) >>  set'  "id"  (show i)
+    in set' "class" (T.pack (intercalate " " klasses)) >>  set'  "id"  (T.pack . show $ i)
 
 positionToString :: Position -> String
 positionToString pos = (show $ _y pos)  ++ "-" ++ (show $ _x pos)
@@ -67,7 +59,4 @@ positionToString pos = (show $ _y pos)  ++ "-" ++ (show $ _x pos)
 
 
 
-stepper ::  StdGen -> (Tile -> Tile) -> GameState -> Direction -> GameState
-stepper gen at gs dir = let setState = setOutcome gs in 
-                          if setState ^. progress /= InProgress then gs
-                          else (putRandomTile gen at) (updateGameState dir setState)
+

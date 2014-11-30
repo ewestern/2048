@@ -1,4 +1,4 @@
-  module Game where
+module Game where
 
 import Types
 import Prelude hiding (Empty, Right, Left)
@@ -45,17 +45,19 @@ gridToTransform  = M.foldlWithKey insert' M.empty
   {-where-}
     {-(newGrid, sScore) = slideGrid d $ g ^. grid -}
 
-updateGrid :: StdGen -> Direction -> Grid -> ((Int, Grid), Grid)
-updateGrid gen d g = 
+updateGrid :: Direction -> ([Float], Grid) -> ((Int, Grid), ([Float], Grid))
+updateGrid d ((p:v:ys), g) = 
   let (tl, i) =  slideGrid d $ gridToTileList g 
       newGrid = putRandomTile p v newId $ tileListToGrid tl
-  in ((i, newGrid), newGrid) 
+  in ((i, newGrid), (ys, newGrid) )
   where
     count' a Nothing = a
     count' a (Just (Tile i v)) = if i > a then i else a 
     newId = (+1) $ M.foldl count' 1 g
-    (p:v:_) = take 2 $ randoms gen
-    duplicate v = (v, v)
+
+
+
+--updateGameState :: StdGen -> Direction -> GameState - 
 
 gridToTileList :: Grid -> TileList
 gridToTileList g = [[fromJust $ M.lookup (Position x y) g | y <- [1..gridSize]] | x <- [1..gridSize]]

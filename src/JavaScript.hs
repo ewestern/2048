@@ -1,11 +1,11 @@
-{-# LANGUAGE OverloadedStrings, CPP #-}
+{-# LANGUAGE OverloadedStrings, CPP, FlexibleInstances #-}
 module JavaScript where
 
 import qualified Data.Text as T
 
 
 #ifdef __GHCJS__
-
+import Control.Applicative
 import GHCJS.Types
 import GHCJS.Foreign
 data JSEvent_
@@ -15,7 +15,8 @@ data DomElement_
 type DomElement  = JSRef DomElement_
 
 type Element = DomElement
-instance Show J.Element where
+
+instance Show (JSRef DomElement_) where
 	show e = "Element"
 
 
@@ -25,7 +26,7 @@ foreign import javascript unsafe
 
 foreign import javascript unsafe
   "$1.id;"
-  js_getId :: Element -> IO JSString
+  js_getId :: DomElement -> IO JSString
 
 foreign import javascript unsafe 
   "$1.classList.add($2);"
@@ -65,10 +66,10 @@ foreign import javascript unsafe
 
 foreign import javascript unsafe
 	"document.getElementsByClassName($1)"
-  js_getElementsByClassName :: JSString -> IO [DomElements]
+  js_getElementsByClassName :: JSString -> IO (JSArray (DomElement_))
 
-getId :: DomElement -> T.Text
-getId el = toJSString . js_getId
+getId :: DomElement -> IO T.Text
+getId el = fromJSString <$> js_getId el
 
 removeChild :: DomElement -> DomElement -> IO ()
 removeChild = js_removeChild
@@ -77,7 +78,11 @@ getElementById :: T.Text -> IO DomElement
 getElementById = js_getElementById . toJSString 
 
 getElementsByClassName :: T.Text -> IO [DomElement]
-getElementsByClassName = js_getElementsByClassName . toJSString
+getElementsByClassName c = do
+  arr <- js_getElementsByClassName $ toJSString c
+  ls <- fromArray arr
+  return ls
+ 	
 
 setAttribute :: DomElement -> T.Text -> T.Text -> IO ()
 setAttribute el att val = js_setAttribute el (toJSString att) (toJSString val)
