@@ -25,23 +25,23 @@ foreign import javascript unsafe
   getKey :: Event -> IO Int
 
 foreign import javascript unsafe
-  "$1.id;"
+  "$1.id"
   js_getId :: DomElement -> IO JSString
 
 foreign import javascript unsafe 
-  "$1.classList.add($2);"
+  "$1.classList.add($2)"
   js_classListAdd :: DomElement -> JSString -> IO ()
 
 foreign import javascript unsafe 
-  "$1.classList.remove($2);"
+  "$1.classList.remove($2)"
   js_classListRemove :: DomElement -> JSString -> IO ()
 
 foreign import javascript unsafe
-  "$1.addEventListener($2, $3);"
+  "$1.addEventListener($2, $3)"
   js_addEventListener :: DomElement -> JSString -> (JSFun (Event -> IO ())) -> IO ()
 
 foreign import javascript unsafe
-  "window.addEventListener($1, $2);"
+  "window.addEventListener($1, $2)"
   js_addWindowListener :: JSString -> (JSFun (Event -> IO ())) -> IO ()
 
 foreign import javascript unsafe 
@@ -68,6 +68,11 @@ foreign import javascript unsafe
 	"document.getElementsByClassName($1)"
   js_getElementsByClassName :: JSString -> IO (JSArray (DomElement_))
 
+foreign import javascript unsafe
+	"document.getElementsByTagName($1)"
+	js_getElementsByTagName :: JSString -> IO (JSArray (DomElement_))
+
+
 getId :: DomElement -> IO T.Text
 getId el = fromJSString <$> js_getId el
 
@@ -77,13 +82,19 @@ removeChild = js_removeChild
 getElementById :: T.Text -> IO DomElement
 getElementById = js_getElementById . toJSString 
 
+-- todo: make this generic
+getElementsByTagName :: T.Text -> IO [DomElement]
+getElementsByTagName c = do
+  arr <- js_getElementsByTagName $ toJSString c
+  ls <- fromArray arr
+  return ls
+ 	
 getElementsByClassName :: T.Text -> IO [DomElement]
 getElementsByClassName c = do
   arr <- js_getElementsByClassName $ toJSString c
   ls <- fromArray arr
   return ls
- 	
-
+ 
 setAttribute :: DomElement -> T.Text -> T.Text -> IO ()
 setAttribute el att val = js_setAttribute el (toJSString att) (toJSString val)
 

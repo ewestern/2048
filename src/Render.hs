@@ -22,6 +22,7 @@ readText = read . T.unpack
 
 renderGrid :: J.Element -> Grid -> IO ()
 renderGrid par g = do
+  print  g
   es <- J.getElementsByClassName  "tile"   
   ids <- map readText <$> mapM J.getId es
   mapM_ updateEl es
@@ -35,6 +36,7 @@ renderGrid par g = do
         Just (p, v) -> setCSSClass el (p, v) $ readText t 
     createEl i = do
       el <- createTileEl
+      J.appendChild par el	
       setCSSClass el (fromJust $ M.lookup i trans)  i
 
 

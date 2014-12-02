@@ -16,7 +16,6 @@ import GHCJS.Foreign
 handleKeydown :: J.Event -> IO Direction
 handleKeydown ev = do
   n <- J.getKey ev
-  print n
   case n of
     38 -> return Up
     40 -> return Down
@@ -24,11 +23,10 @@ handleKeydown ev = do
     39 -> return Right
     _ -> return Nope
 
-makeGrid :: J.Element -> Event Direction -> IO (Behavior (Int, Grid) )
+makeGrid :: J.Element -> Event Direction -> IO (Behavior (Int, Grid))
 makeGrid par ed = do
   gridEl <- J.createElementWithClass "div" "tile-container" >>= J.appendChild par
   (p1:v1:p2:v2:fs) <- randoms <$> getStdGen
-
   let initialGrid = (putRandomTile p1 v1 1) . (putRandomTile p2 v2 2) $ emptyGrid  
   bg <- sync $ collect updateGrid (fs, initialGrid) =<< hold Nope ed
   un <- sync $ listen (value $ snd <$> bg) $ renderGrid gridEl
@@ -43,7 +41,10 @@ main = do
   (evt, pushEvent) <- sync newEvent
   let handler e = sync . pushEvent =<< handleKeydown e
   J.addWindowListener "keydown" handler
-  cont <- J.getElementById "game-container"
+  
+  cont <- J.createElementWithClass "div" "game-container"
+  (body:_) <- J.getElementsByTagName "body"
+  J.appendChild body cont
   gameEl <- makeGrid cont evt 
   return ()
 

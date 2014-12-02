@@ -122,4 +122,14 @@ setOutcome gs
 
 
 
+prettyPrint :: Grid -> String
+prettyPrint g = concat $ map showRow $ zip (gridToTileList g)  [1..]
+	where
+		showRow (ls, y) = (replicate 8 '_') ++ "\n" ++  (concat $ map showTile ( zip ls [1..] )) ++ "\n"
+			where
+				showTile (t,x)
+					| x == 1 = "|" ++ show (tileValue t) ++ "|"
+					| otherwise = show (tileValue t) ++ "|" 
+
+
 
