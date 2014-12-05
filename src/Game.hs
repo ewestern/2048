@@ -60,7 +60,7 @@ updateGrid d ((p:v:ys), g) =
 --updateGameState :: StdGen -> Direction -> GameState - 
 
 gridToTileList :: Grid -> TileList
-gridToTileList g = [[fromJust $ M.lookup (Position x y) g | y <- [1..gridSize]] | x <- [1..gridSize]]
+gridToTileList g = [[fromJust $ M.lookup (Position x y) g | x <- [1..gridSize]] | y <- [1..gridSize]]
 
 tileListToGrid :: TileList -> Grid
 tileListToGrid tl = M.fromList . concat $ map (\(r, y) -> map (\(mt, x) -> (Position x y, mt)) (zip r [1..])) (zip tl [1..])

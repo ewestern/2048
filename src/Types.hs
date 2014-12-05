@@ -36,7 +36,6 @@ type TileList = [[Maybe Tile]]
 
 data Progress = InProgress | Lose | Win deriving (Eq, Show)
 
-
 data GameState = GameState {
   _grid :: Grid,
   _score :: Int,
