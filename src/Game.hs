@@ -33,6 +33,9 @@ randomChoice f l =
   in if length l == 0 then Nothing else Just $ l !! idx 
 
 
+sameGrid :: Direction -> Grid -> Bool 
+sameGrid d g = g == (tileListToGrid . fst . (slideGrid d) . gridToTileList) g
+
 gridToTransform :: Grid -> M.Map Int (Position, Value) 
 gridToTransform  = M.foldlWithKey insert' M.empty 
 	where
@@ -111,20 +114,17 @@ tileValue Nothing = 0
 hasWon :: TileList -> Bool
 hasWon = not . isNothing . find ((== winningVal) . tileValue) . concat
 
---game is lost if sliding in all directions results in the same grid
+--game is lost if all spots are taken 
 hasLost :: TileList -> Bool
-hasLost g = and $ map (\d -> g == (fst $ slideGrid d g)) [Down, Right, Up, Left]
+hasLost = all (all (\mt -> mt /= Nothing)) 
+
+{-hasLost g = and $ map (\d -> g == (fst $ slideGrid d g)) [Down, Right, Up, Left]-}
 
 emptyPositions :: Grid -> [Position]
 emptyPositions = M.keys .  M.filter  (\m -> m == Nothing) 
 {-map fst . filter ((== Empty) . snd) . tilePositions-}
 
 
-setOutcome :: GameState -> GameState
-setOutcome gs
-  | hasWon . gridToTileList . _grid $ gs = set progress Win gs
-  | hasLost . gridToTileList . _grid $ gs = set progress Lose gs
-  | otherwise = gs
 
 
 
