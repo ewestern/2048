@@ -30,7 +30,7 @@ newTilePosition x g = case emptyPositions g of
 randomChoice :: Float -> [b] -> Maybe b
 randomChoice f l = 
   let idx = floor $ f * fromIntegral (length l)
-  in if length l == 0 then Nothing else Just $ l !! (floor  f * length l)
+  in if length l == 0 then Nothing else Just $ l !! idx 
 
 
 gridToTransform :: Grid -> M.Map Int (Position, Value) 
@@ -39,25 +39,18 @@ gridToTransform  = M.foldlWithKey insert' M.empty
 		insert' acc p (Just (Tile tid v)) = M.insert tid (p, v) acc
 		insert' acc p Nothing = acc
 
-
-{-updateGameState :: Direction -> GameState -> GameState-}
-{-updateGameState d = (set grid newGrid) . (over score (+sScore)) -}
-  {-where-}
-    {-(newGrid, sScore) = slideGrid d $ g ^. grid -}
-
+-- todo: at game level, check slideGrid to see if any movement, if not, change direction to Nope
 updateGrid :: Direction -> ([Float], Grid) -> ((Int, Grid), ([Float], Grid))
+updateGrid Nope (fs, g) = ((0, g), (fs, g))
 updateGrid d ((p:v:ys), g) = 
   let (tl, i) =  slideGrid d $ gridToTileList g 
       newGrid = putRandomTile p v newId $ tileListToGrid tl
-  in ((i, newGrid), (ys, newGrid) )
+  in ((i, newGrid), (ys, newGrid))
   where
     count' a Nothing = a
     count' a (Just (Tile i v)) = if i > a then i else a 
     newId = (+1) $ M.foldl count' 1 g
 
-
-
---updateGameState :: StdGen -> Direction -> GameState - 
 
 gridToTileList :: Grid -> TileList
 gridToTileList g = [[fromJust $ M.lookup (Position x y) g | x <- [1..gridSize]] | y <- [1..gridSize]]
@@ -65,9 +58,8 @@ gridToTileList g = [[fromJust $ M.lookup (Position x y) g | x <- [1..gridSize]] 
 tileListToGrid :: TileList -> Grid
 tileListToGrid tl = M.fromList . concat $ map (\(r, y) -> map (\(mt, x) -> (Position x y, mt)) (zip r [1..])) (zip tl [1..])
 
-rotate :: TileList -> TileList 
+rotate :: [[a]] -> [[a]] 
 rotate = map reverse . transpose
-
 
 emptyGrid :: Grid
 emptyGrid = M.fromList [(Position x y, Nothing) | x <- [1..gridSize], y <- [1..gridSize]]
@@ -77,25 +69,39 @@ emptyGrid = M.fromList [(Position x y, Nothing) | x <- [1..gridSize], y <- [1..g
 slideRow :: [Maybe Tile] -> ([Maybe Tile], Int)
 slideRow row = (take gridSize (newRow ++ (repeat Nothing)), score)
   where 
-    grouped = group $ filter (\t -> t /= Nothing) row 
-    newRow = map mergeTiles grouped
+    grouped = group2 $ filter (\t -> t /= Nothing) row 
+    newRow = map mergeGroup  grouped
     score = sum . (map tileValue) $ concat $ filter (\ls -> length ls > 1) grouped
-    mergeTiles ls@(Just (Tile i v):ts) = Just $ Tile i (sum $ map tileValue ls)
+
+mergeGroup :: [Maybe Tile] -> Maybe Tile
+mergeGroup ls@(Just (Tile i _):_) = Just $ Tile i (sum $ map tileValue ls)
+
+
+group2 :: [Maybe Tile] -> [[Maybe Tile]]
+group2 [] = []
+group2 (x:[]) = [[x]]
+group2 (x:y:zs) = if tileValue x == tileValue y 
+                then ([x,y]):(group2 zs) 
+                else ([x]):(group2 (y:zs)) 
 
 slideGrid :: Direction -> TileList ->  (TileList, Int)
-slideGrid dir g = (unrotator newRows, sum scorez)
+slideGrid dir g = (unrotator dir newRows, sum scorez)
   where 
-    (newRows, scorez) = unzip $ map slideRow $ rotator g
-    rotator = case dir of
-      Down -> rotate
-      Right -> rotate . rotate
-      Up -> rotate . rotate . rotate
-      _ -> id
-    unrotator = case dir of
-      Up -> rotate
-      Right -> rotate . rotate
-      Down -> rotate . rotate . rotate
-      _ -> id
+    (newRows, scorez) = unzip $ map slideRow $ rotator dir g
+
+rotator :: Direction -> [[a]] -> [[a]] 
+rotator dir = case dir of
+        Down -> rotate
+        Right -> rotate . rotate
+        Up -> rotate . rotate . rotate
+        _ -> id
+
+unrotator :: Direction -> [[a]] -> [[a]] 
+unrotator dir = case dir of
+        Up -> rotate
+        Right -> rotate . rotate
+        Down -> rotate . rotate . rotate
+        _ -> id
 
 tileValue :: Maybe Tile -> Value
 tileValue (Just t) = _value t

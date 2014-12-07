@@ -8,7 +8,7 @@ import qualified Data.Set as S
 import qualified Data.Map as M
 import qualified JavaScript as J
 
-data Direction = Left | Right | Up | Down | Nope deriving(Eq)
+data Direction = Left | Right | Up | Down | Nope deriving(Eq, Show)
 
 type Value = Int
 

@@ -22,7 +22,7 @@ readText = read . T.unpack
 
 renderGrid :: J.Element -> Grid -> IO ()
 renderGrid par g = do
-  print  g
+  putStrLn $ prettyPrint g
   es <- J.getElementsByClassName  "tile"   
   ids <- map readText <$> mapM J.getId es
   mapM_ updateEl es
@@ -55,7 +55,7 @@ setCSSClass el (pos, v) i =
     in set' "class" (T.pack (intercalate " " klasses)) >>  set'  "id"  (T.pack . show $ i)
 
 positionToString :: Position -> String
-positionToString pos = (show $ _y pos)  ++ "-" ++ (show $ _x pos)
+positionToString pos = (show $ _x pos)  ++ "-" ++ (show $ _y pos)
 
 
 
