@@ -39,7 +39,8 @@ data Progress = InProgress | Lose | Win deriving (Eq, Show)
 data GameState = GameState {
   _grid :: Grid,
   _score :: Int,
-  _progress :: Progress
+  _progress :: Progress,
+  _randoms :: [Float]
 } deriving (Show, Eq)
 
 

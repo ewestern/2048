@@ -77,11 +77,9 @@ main = do
   {-print $ slideRow testRow1 -}
   {-putStrLn $ prettyPrint testGrid2-}
   {-showRotated $ testGrid2-}
-  
   {-putStrLn $ prettyPrint $ testGrid2-}
   {-putStrLn $ prettyPrint . tileListToGrid . fst . (slideGrid Down) . gridToTileList $ testGrid2  -}
   {-putStrLn $ prettyPrint . tileListToGrid . fst . (slideGrid Up) . gridToTileList $ testGrid2  -}
-  
   (p1:v1:p2:v2:fs) <- randoms <$> getStdGen
   let initialGrid = (putRandomTile p1 v1 1) . (putRandomTile p2 v2 2) $ emptyGrid 
   putStrLn $ prettyPrint initialGrid

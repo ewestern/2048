@@ -72,6 +72,16 @@ foreign import javascript unsafe
 	"document.getElementsByTagName($1)"
 	js_getElementsByTagName :: JSString -> IO (JSArray (DomElement_))
 
+foreign import javascript unsage
+  "$1.innerHTML = $2"
+  js_innerHTML :: Element -> JSString -> IO ()
+
+
+createChildWithClass :: Element -> T.Text -> T.Text -> IO Element
+createChildWithClass p t c  = (createElementWithClass t c) >>= (appendChild p) 
+
+innerHTML :: Element -> T.Text -> IO ()
+innerHTML e = (js_innerHTML e) . toJSString  
 
 getId :: DomElement -> IO T.Text
 getId el = fromJSString <$> js_getId el

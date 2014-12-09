@@ -23,19 +23,36 @@ handleKeydown ev = do
     39 -> return Right
     _ -> return Nope
 
-makeGrid :: J.Element -> Event Direction -> IO (Behavior (Int, Grid))
+
+
+makeGrid :: J.Element -> Event Direction -> IO (Behavior GameState)
 makeGrid par ed = do
   gridEl <- J.createElementWithClass "div" "tile-container" >>= J.appendChild par
   (p1:v1:p2:v2:fs) <- randoms <$> getStdGen
   let initialGrid = (putRandomTile p1 v1 1) . (putRandomTile p2 v2 2) $ emptyGrid  
-  bg <- sync $ collect updateGrid (fs, initialGrid) =<< hold Nope ed
-  un <- sync $ listen (value $ snd <$> bg) $ renderGrid gridEl
+  (bgs, bpush) <- sync $ newBehavior GameState initialGrid 0 InProgress fs 
+  
+  bgrid <- sync $ collect updateGrid (fs, initialGrid) =<< hold Nope ed
+  un <- sync $ listen (value $ snd <$> bgrid) $ renderGrid gridEl
   return bg
 
 --stepper ::  StdGen -> (Tile -> Tile) -> GameState -> Direction -> GameState
 --stepper gen at gs dir = let setState = setOutcome gs in 
 --													if setState ^. progress /= InProgress then gs
 --													else (putRandomTile gen at) (updateGameState dir setState)
+
+makeHeader :: J.Element -> Behavior Int -> IO () 
+makeHeader par e = do
+  headerEl <- J.createChildWithClass par "div" "heading"
+  J.createChildWithClass headerEl "h1" "title" >>= (\e -> J.innerHTML e "2048")
+  scores <- J.createChildWithClass headerEl "div" "scores-container" 
+  score <- J.createChildWithClass scores "div" "score-container" >>= (\e -> J.innerHTML e "0")
+  (b, bp) <- sync $ newBehavior 0
+  sync $ listen (values ed) (\i -> J.innerHTML score $ show i)
+  return headerEl 
+  
+
+
 
 main = do
   (evt, pushEvent) <- sync newEvent
