@@ -11,6 +11,7 @@ import System.Random
 import Control.Lens
 import Data.List
 import Data.Maybe
+import Control.Concurrent
 import qualified Data.Text as T
 import Data.List ((\\))
 import qualified Data.Map as M
@@ -22,10 +23,9 @@ readText = read . T.unpack
 
 renderGrid :: J.Element -> Grid -> IO ()
 renderGrid par g = do
-  putStrLn $ prettyPrint g
   es <- J.getElementsByClassName  "tile"   
   ids <- map readText <$> mapM J.getId es
-  mapM_ updateEl es
+  mapM_ updateEl es >> threadDelay 100000
   mapM_ createEl $ (M.keys trans) \\ ids  
 	where
     trans = gridToTransform g

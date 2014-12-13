@@ -40,9 +40,7 @@ data GameState = GameState {
   _grid :: Grid,
   _score :: Int,
   _progress :: Progress,
-  _randoms :: [Float]
+  _rs :: [Float]
 } deriving (Show, Eq)
-
-
 
 makeLenses ''GameState

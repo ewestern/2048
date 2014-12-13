@@ -42,18 +42,21 @@ gridToTransform  = M.foldlWithKey insert' M.empty
 		insert' acc p (Just (Tile tid v)) = M.insert tid (p, v) acc
 		insert' acc p Nothing = acc
 
--- todo: at game level, check slideGrid to see if any movement, if not, change direction to Nope
-updateGrid :: Direction -> ([Float], Grid) -> ((Int, Grid), ([Float], Grid))
-updateGrid Nope (fs, g) = ((0, g), (fs, g))
-updateGrid d ((p:v:ys), g) = 
-  let (tl, i) =  slideGrid d $ gridToTileList g 
+updateGameState :: Direction -> GameState -> (GameState, GameState)
+updateGameState Nope g = (g, g)
+updateGameState d gs@(GameState g s prog (p:v:rs)) = 
+  let (tl, i) = slideGrid d $ gridToTileList g
       newGrid = putRandomTile p v newId $ tileListToGrid tl
-  in ((i, newGrid), (ys, newGrid))
+      newGS = GameState newGrid (s + i) (newProgress tl) rs
+  in (newGS, newGS)
   where
+    newProgress tl 
+      | hasWon tl = Win
+      | hasLost tl = Lose
+      | otherwise = InProgress
     count' a Nothing = a
     count' a (Just (Tile i v)) = if i > a then i else a 
     newId = (+1) $ M.foldl count' 1 g
-
 
 gridToTileList :: Grid -> TileList
 gridToTileList g = [[fromJust $ M.lookup (Position x y) g | x <- [1..gridSize]] | y <- [1..gridSize]]
@@ -76,8 +79,12 @@ slideRow row = (take gridSize (newRow ++ (repeat Nothing)), score)
     newRow = map mergeGroup  grouped
     score = sum . (map tileValue) $ concat $ filter (\ls -> length ls > 1) grouped
 
+-- would likst
 mergeGroup :: [Maybe Tile] -> Maybe Tile
-mergeGroup ls@(Just (Tile i _):_) = Just $ Tile i (sum $ map tileValue ls)
+mergeGroup ls = 
+  let newId = _tid . fromJust $ last ls 
+  in Just $ Tile newId (sum $ map tileValue ls)
+{-mergeGroup ls@(Just (Tile i _):_) = Just $ Tile i (sum $ map tileValue ls)-}
 
 
 group2 :: [Maybe Tile] -> [[Maybe Tile]]

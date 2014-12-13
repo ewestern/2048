@@ -72,10 +72,13 @@ foreign import javascript unsafe
 	"document.getElementsByTagName($1)"
 	js_getElementsByTagName :: JSString -> IO (JSArray (DomElement_))
 
-foreign import javascript unsage
+foreign import javascript unsafe
   "$1.innerHTML = $2"
   js_innerHTML :: Element -> JSString -> IO ()
 
+{-foreign import javascript safe   -}
+  {-"setTimeout($c, $1);"-}
+  {-delay :: Int -> IO ()-}
 
 createChildWithClass :: Element -> T.Text -> T.Text -> IO Element
 createChildWithClass p t c  = (createElementWithClass t c) >>= (appendChild p) 
