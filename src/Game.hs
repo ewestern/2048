@@ -1,4 +1,4 @@
-  module Game where
+module Game where
 
 import Types
 import Prelude hiding (Empty, Right, Left)
@@ -6,92 +6,143 @@ import Control.Lens
 import Data.List
 import Data.Maybe
 import System.Random
+import qualified Data.Map as M
 
 gridSize = 4
 winningVal = 2048
 tileProbability = 0.9
 initialTiles = 2
 
-rotate :: Grid -> Grid
+putRandomTile :: Float -> Float -> Int ->  Grid -> Grid
+putRandomTile p v i g = 
+  let newPos = newTilePosition p g
+      newVal = if v < 0.9 then 2 else 4
+  in case newPos of
+    Nothing -> g
+    Just pos -> M.insert pos (Just $ Tile i newVal) g
+
+newTilePosition :: Float -> Grid -> Maybe Position
+newTilePosition x g = case emptyPositions g of
+  [] -> Nothing
+  es -> randomChoice x es 
+
+
+randomChoice :: Float -> [b] -> Maybe b
+randomChoice f l = 
+  let idx = floor $ f * fromIntegral (length l)
+  in if length l == 0 then Nothing else Just $ l !! idx 
+
+
+sameGrid :: Direction -> Grid -> Bool 
+sameGrid d g = g == (tileListToGrid . fst . (slideGrid d) . gridToTileList) g
+
+gridToTransform :: Grid -> M.Map Int (Position, Value) 
+gridToTransform  = M.foldlWithKey insert' M.empty 
+	where
+		insert' acc p (Just (Tile tid v)) = M.insert tid (p, v) acc
+		insert' acc p Nothing = acc
+
+updateGameState :: Direction -> GameState -> (GameState, GameState)
+updateGameState Nope g = (g, g)
+updateGameState d gs@(GameState g s prog (p:v:rs)) = 
+  let (tl, i) = slideGrid d $ gridToTileList g
+      newGrid = putRandomTile p v newId $ tileListToGrid tl
+      newGS = GameState newGrid (s + i) (newProgress tl) rs
+  in (newGS, newGS)
+  where
+    newProgress tl 
+      | hasWon tl = Win
+      | hasLost tl = Lose
+      | otherwise = InProgress
+    count' a Nothing = a
+    count' a (Just (Tile i v)) = if i > a then i else a 
+    newId = (+1) $ M.foldl count' 1 g
+
+gridToTileList :: Grid -> TileList
+gridToTileList g = [[fromJust $ M.lookup (Position x y) g | x <- [1..gridSize]] | y <- [1..gridSize]]
+
+tileListToGrid :: TileList -> Grid
+tileListToGrid tl = M.fromList . concat $ map (\(r, y) -> map (\(mt, x) -> (Position x y, mt)) (zip r [1..])) (zip tl [1..])
+
+rotate :: [[a]] -> [[a]] 
 rotate = map reverse . transpose
 
 emptyGrid :: Grid
-emptyGrid = replicate gridSize $ replicate gridSize Empty
-
-readTile :: Position -> Grid -> Tile
-readTile (Position x y) g = (g !! y) !! x 
-
-setTile :: Position -> Tile -> Grid -> Grid
-setTile (Position x y) t g = let r = take x row ++ [t] ++ drop (x + 1) row in take y g ++ [r] ++ drop (y + 1) g
-  where row = g !! y
+emptyGrid = M.fromList [(Position x y, Nothing) | x <- [1..gridSize], y <- [1..gridSize]]
 
 -- creates a new row, slid to the left, with appropriate values merged if necessary
 --HERE
-slideRow :: Row -> (Row, Int)
-slideRow row = (take gridSize (newRow ++ (repeat Empty)), score)
+slideRow :: [Maybe Tile] -> ([Maybe Tile], Int)
+slideRow row = (take gridSize (newRow ++ (repeat Nothing)), score)
   where 
-    grouped = group $ filter (\t -> t /= Empty) row 
-    newRow = map (\ls -> Tile (sum $ map tileValue ls) Nothing (_tileElement $ head ls)) grouped
+    grouped = group2 $ filter (\t -> t /= Nothing) row 
+    newRow = map mergeGroup  grouped
     score = sum . (map tileValue) $ concat $ filter (\ls -> length ls > 1) grouped
 
-setPositions :: Grid -> Grid
-setPositions g = map (\(r, y) -> map (\(t, x) -> setPos t (Position x y)) $ zip r [0..]) $ zip g [0..]
-  where
-    setPos (Tile v p e) newPos = Tile v (Just newPos) e
-    setPos Empty newPos = Empty 
+-- would likst
+mergeGroup :: [Maybe Tile] -> Maybe Tile
+mergeGroup ls = 
+  let newId = _tid . fromJust $ last ls 
+  in Just $ Tile newId (sum $ map tileValue ls)
+{-mergeGroup ls@(Just (Tile i _):_) = Just $ Tile i (sum $ map tileValue ls)-}
 
-slideGrid :: Direction -> Grid ->  (Grid, Int)
-slideGrid dir g = (setPositions $ unrotator newRows, sum scorez)
+
+group2 :: [Maybe Tile] -> [[Maybe Tile]]
+group2 [] = []
+group2 (x:[]) = [[x]]
+group2 (x:y:zs) = if tileValue x == tileValue y 
+                then ([x,y]):(group2 zs) 
+                else ([x]):(group2 (y:zs)) 
+
+slideGrid :: Direction -> TileList ->  (TileList, Int)
+slideGrid dir g = (unrotator dir newRows, sum scorez)
   where 
-    (newRows, scorez) = unzip $ map slideRow $ rotator g
-    rotator = case dir of
-      Down -> rotate
-      Right -> rotate . rotate
-      Up -> rotate . rotate . rotate
-      _ -> id
-    unrotator = case dir of
-      Up -> rotate
-      Right -> rotate . rotate
-      Down -> rotate . rotate . rotate
-      _ -> id
+    (newRows, scorez) = unzip $ map slideRow $ rotator dir g
 
-tileValue :: Tile -> Value
-tileValue t = case t of 
-  Empty -> 0
-  Tile v p e -> v
+rotator :: Direction -> [[a]] -> [[a]] 
+rotator dir = case dir of
+        Down -> rotate
+        Right -> rotate . rotate
+        Up -> rotate . rotate . rotate
+        _ -> id
 
+unrotator :: Direction -> [[a]] -> [[a]] 
+unrotator dir = case dir of
+        Up -> rotate
+        Right -> rotate . rotate
+        Down -> rotate . rotate . rotate
+        _ -> id
+
+tileValue :: Maybe Tile -> Value
+tileValue (Just t) = _value t
+tileValue Nothing = 0
 
 --game is won if there is a tile with value of winningVal
-hasWon :: Grid -> Bool
+hasWon :: TileList -> Bool
 hasWon = not . isNothing . find ((== winningVal) . tileValue) . concat
 
---game is lost if sliding in all directions results in the same grid
-hasLost :: Grid -> Bool
-hasLost g = and $ map (\d -> g == (fst $ slideGrid d g)) [Down, Right, Up, Left]
+--game is lost if all spots are taken 
+hasLost :: TileList -> Bool
+hasLost = all (all (\mt -> mt /= Nothing)) 
+
+{-hasLost g = and $ map (\d -> g == (fst $ slideGrid d g)) [Down, Right, Up, Left]-}
 
 emptyPositions :: Grid -> [Position]
-emptyPositions = map fst . filter ((== Empty) . snd) . tilePositions
+emptyPositions = M.keys .  M.filter  (\m -> m == Nothing) 
+{-map fst . filter ((== Empty) . snd) . tilePositions-}
 
 
-tilePositions :: Grid -> [(Position, Tile)]
-tilePositions = concat . zipWith dZip [0..]
-  where 
-    dZip y ls = map (\(x, t) ->  (Position x y, t)) $ zip [0..] ls
-
-newTilePosition :: Float -> Grid -> Maybe Position
-newTilePosition x g = case empties of
-  [] -> Nothing
-  otherwise -> Just $ empties !! (floor $ x * (fromIntegral $ length empties))
-  where
-    empties = emptyPositions g  
 
 
-setOutcome :: GameState -> GameState
-setOutcome gs
-  | hasWon $ gs ^. grid = set progress Win gs
-  | hasLost $ gs ^. grid = set progress Lose gs
-  | otherwise = gs
 
+prettyPrint :: Grid -> String
+prettyPrint g = concat $ map showRow $ zip (gridToTileList g)  [1..]
+	where
+		showRow (ls, y) = (replicate 8 '_') ++ "\n" ++  (concat $ map showTile ( zip ls [1..] )) ++ "\n"
+			where
+				showTile (t,x)
+					| x == 1 = "|" ++ show (tileValue t) ++ "|"
+					| otherwise = show (tileValue t) ++ "|" 
 
 
 
