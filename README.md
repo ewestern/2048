@@ -11,4 +11,5 @@ git clone https://github.com/ewestern/2048.git
 cd 2048 
 cabal install --ghcjs
 ```
-
+## Example
+[Link.](http://peterfrance.net/static/js/2048/index.html)
